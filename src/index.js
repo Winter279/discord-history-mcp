@@ -122,8 +122,11 @@ server.tool(
 
 const app = express();
 
-// Auth middleware — validates API_SECRET if set
-app.use((req, res, next) => {
+// Health check endpoint (no auth required)
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+// Auth middleware — validates API_SECRET for MCP endpoints
+const authMiddleware = (req, res, next) => {
   if (API_SECRET) {
     const auth = req.headers.authorization;
     if (auth !== `Bearer ${API_SECRET}`) {
@@ -131,22 +134,19 @@ app.use((req, res, next) => {
     }
   }
   next();
-});
-
-// Health check endpoint
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+};
 
 // SSE transport — stores transports by session for message routing
 const transports = {};
 
-app.get("/sse", async (_req, res) => {
+app.get("/sse", authMiddleware, async (_req, res) => {
   const transport = new SSEServerTransport("/messages", res);
   transports[transport.sessionId] = transport;
   res.on("close", () => delete transports[transport.sessionId]);
   await server.connect(transport);
 });
 
-app.post("/messages", async (req, res) => {
+app.post("/messages", authMiddleware, async (req, res) => {
   const sessionId = req.query.sessionId;
   const transport = transports[sessionId];
   if (!transport) return res.status(400).json({ error: "Unknown session" });
