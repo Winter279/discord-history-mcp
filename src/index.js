@@ -3,8 +3,10 @@
  * Exposes tools: discord_read_history, discord_list_channels, discord_search.
  */
 
+import "dotenv/config";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
 import { z } from "zod";
 import {
@@ -211,7 +213,23 @@ app.post("/messages", authMiddleware, async (req, res) => {
   await transport.handlePostMessage(req, res);
 });
 
+// Streamable HTTP transport — single endpoint for GoClaw streamable-http
+app.post("/mcp", authMiddleware, async (req, res) => {
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  await server.connect(transport);
+  await transport.handleRequest(req, res);
+});
+
 app.listen(PORT, () => {
   console.log(`Discord History MCP server running on port ${PORT}`);
   console.log(`SSE endpoint: http://localhost:${PORT}/sse`);
+  console.log(`Streamable HTTP endpoint: http://localhost:${PORT}/mcp`);
+
+  // Self-ping every 10 min to prevent Render free tier from sleeping
+  if (process.env.RENDER_EXTERNAL_URL) {
+    setInterval(() => {
+      fetch(`${process.env.RENDER_EXTERNAL_URL}/health`).catch(() => {});
+    }, 10 * 60 * 1000);
+    console.log("Self-ping enabled (Render keep-alive)");
+  }
 });
