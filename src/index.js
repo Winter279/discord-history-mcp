@@ -3,7 +3,8 @@
  * Exposes tools: discord_read_history, discord_list_channels, discord_search.
  */
 
-import "dotenv/config";
+// Load .env file for local development (dotenv optional — Render injects env vars)
+try { await import("dotenv/config"); } catch {}
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
