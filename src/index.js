@@ -10,7 +10,10 @@ import { z } from "zod";
 import {
   fetchChannelMessages,
   listGuildChannels,
+  listGuildMembers,
   searchMessages,
+  sendDirectMessage,
+  sendChannelMessage,
 } from "./discord-api.js";
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -114,6 +117,61 @@ server.tool(
           text: formatted || "No matching messages found.",
         },
       ],
+    };
+  }
+);
+
+// Tool: List server members with roles
+server.tool(
+  "discord_list_members",
+  "List all members in a Discord server/guild with their roles.",
+  {
+    guild_id: z.string().describe("Discord server/guild ID"),
+    limit: z.number().min(1).max(1000).default(100).describe("Max members (1-1000)"),
+  },
+  async ({ guild_id, limit }) => {
+    const members = await listGuildMembers(DISCORD_BOT_TOKEN, guild_id, limit);
+    const formatted = members
+      .map(
+        (m) =>
+          `${m.display_name} (@${m.username}, ID: ${m.id})${m.is_bot ? " [BOT]" : ""}${m.roles.length > 0 ? ` — roles: ${m.roles.join(", ")}` : ""}`
+      )
+      .join("\n");
+
+    return {
+      content: [{ type: "text", text: formatted || "No members found." }],
+    };
+  }
+);
+
+// Tool: Send DM to a user
+server.tool(
+  "discord_send_dm",
+  "Send a direct message to a Discord user by their user ID.",
+  {
+    user_id: z.string().describe("Discord user ID"),
+    content: z.string().describe("Message content to send"),
+  },
+  async ({ user_id, content }) => {
+    await sendDirectMessage(DISCORD_BOT_TOKEN, user_id, content);
+    return {
+      content: [{ type: "text", text: `DM sent to user ${user_id}.` }],
+    };
+  }
+);
+
+// Tool: Send message to a channel
+server.tool(
+  "discord_send_message",
+  "Send a message to a Discord channel.",
+  {
+    channel_id: z.string().describe("Discord channel ID"),
+    content: z.string().describe("Message content to send"),
+  },
+  async ({ channel_id, content }) => {
+    await sendChannelMessage(DISCORD_BOT_TOKEN, channel_id, content);
+    return {
+      content: [{ type: "text", text: `Message sent to channel ${channel_id}.` }],
     };
   }
 );

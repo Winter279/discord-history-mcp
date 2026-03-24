@@ -97,3 +97,103 @@ export async function searchMessages(botToken, guildId, query) {
     timestamp: msg.timestamp,
   }));
 }
+
+/**
+ * List members of a guild (server).
+ * @param {string} botToken - Discord bot token
+ * @param {string} guildId - Discord guild/server ID
+ * @param {number} limit - Max members to fetch (max 1000)
+ * @returns {Promise<Array>} Array of members with roles
+ */
+export async function listGuildMembers(botToken, guildId, limit = 100) {
+  const clampedLimit = Math.min(Math.max(limit, 1), 1000);
+  const url = `${DISCORD_API_BASE}/guilds/${guildId}/members?limit=${clampedLimit}`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Discord API error ${res.status}: ${body}`);
+  }
+
+  const members = await res.json();
+
+  return members.map((m) => ({
+    id: m.user?.id,
+    username: m.user?.username || "unknown",
+    display_name: m.nick || m.user?.global_name || m.user?.username || "unknown",
+    roles: m.roles || [],
+    joined_at: m.joined_at,
+    is_bot: m.user?.bot || false,
+  }));
+}
+
+/**
+ * Send a DM to a Discord user. Creates DM channel first, then sends message.
+ * @param {string} botToken - Discord bot token
+ * @param {string} userId - Discord user ID
+ * @param {string} content - Message content
+ * @returns {Promise<object>} Sent message object
+ */
+export async function sendDirectMessage(botToken, userId, content) {
+  // Step 1: Create/get DM channel
+  const dmRes = await fetch(`${DISCORD_API_BASE}/users/@me/channels`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ recipient_id: userId }),
+  });
+
+  if (!dmRes.ok) {
+    const body = await dmRes.text();
+    throw new Error(`Failed to create DM channel: ${dmRes.status}: ${body}`);
+  }
+
+  const dmChannel = await dmRes.json();
+
+  // Step 2: Send message to DM channel
+  const msgRes = await fetch(`${DISCORD_API_BASE}/channels/${dmChannel.id}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content }),
+  });
+
+  if (!msgRes.ok) {
+    const body = await msgRes.text();
+    throw new Error(`Failed to send DM: ${msgRes.status}: ${body}`);
+  }
+
+  return msgRes.json();
+}
+
+/**
+ * Send a message to a Discord channel.
+ * @param {string} botToken - Discord bot token
+ * @param {string} channelId - Discord channel ID
+ * @param {string} content - Message content
+ * @returns {Promise<object>} Sent message object
+ */
+export async function sendChannelMessage(botToken, channelId, content) {
+  const res = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to send message: ${res.status}: ${body}`);
+  }
+
+  return res.json();
+}
