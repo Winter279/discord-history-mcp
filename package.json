@@ -1,0 +1,18 @@
+{
+  "name": "discord-history-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for reading Discord channel message history",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

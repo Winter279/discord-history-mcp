@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: discord-history-mcp
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: API_SECRET
+        sync: false
