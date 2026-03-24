@@ -6,6 +6,37 @@
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 
 /**
+ * Wrapper for Discord API fetch with rate limit handling and logging.
+ * Retries once after rate limit delay.
+ */
+async function discordFetch(url, options = {}) {
+  console.log(`[Discord API] ${options.method || "GET"} ${url.replace(DISCORD_API_BASE, "")}`);
+
+  const res = await fetch(url, {
+    ...options,
+    headers: { Authorization: `Bot ${options.botToken}`, ...options.headers },
+  });
+
+  // Handle rate limit — wait and retry once
+  if (res.status === 429) {
+    const data = await res.json();
+    const retryAfter = (data.retry_after || 1) * 1000;
+    console.warn(`[Discord API] Rate limited! Waiting ${retryAfter}ms...`);
+    await new Promise((r) => setTimeout(r, retryAfter));
+
+    const retryRes = await fetch(url, {
+      ...options,
+      headers: { Authorization: `Bot ${options.botToken}`, ...options.headers },
+    });
+    console.log(`[Discord API] Retry ${retryRes.status}`);
+    return retryRes;
+  }
+
+  console.log(`[Discord API] Response ${res.status}`);
+  return res;
+}
+
+/**
  * Fetch messages from a Discord channel.
  * @param {string} botToken - Discord bot token
  * @param {string} channelId - Discord channel ID
@@ -16,9 +47,7 @@ export async function fetchChannelMessages(botToken, channelId, limit = 50) {
   const clampedLimit = Math.min(Math.max(limit, 1), 100);
   const url = `${DISCORD_API_BASE}/channels/${channelId}/messages?limit=${clampedLimit}`;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bot ${botToken}` },
-  });
+  const res = await discordFetch(url, { botToken });
 
   if (!res.ok) {
     const body = await res.text();
@@ -46,9 +75,7 @@ export async function fetchChannelMessages(botToken, channelId, limit = 50) {
 export async function listGuildChannels(botToken, guildId) {
   const url = `${DISCORD_API_BASE}/guilds/${guildId}/channels`;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bot ${botToken}` },
-  });
+  const res = await discordFetch(url, { botToken });
 
   if (!res.ok) {
     const body = await res.text();
@@ -78,9 +105,7 @@ export async function listGuildChannels(botToken, guildId) {
 export async function searchMessages(botToken, guildId, query) {
   const url = `${DISCORD_API_BASE}/guilds/${guildId}/messages/search?content=${encodeURIComponent(query)}`;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bot ${botToken}` },
-  });
+  const res = await discordFetch(url, { botToken });
 
   if (!res.ok) {
     const body = await res.text();
@@ -109,9 +134,7 @@ export async function listGuildMembers(botToken, guildId, limit = 100) {
   const clampedLimit = Math.min(Math.max(limit, 1), 1000);
   const url = `${DISCORD_API_BASE}/guilds/${guildId}/members?limit=${clampedLimit}`;
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bot ${botToken}` },
-  });
+  const res = await discordFetch(url, { botToken });
 
   if (!res.ok) {
     const body = await res.text();
@@ -139,12 +162,10 @@ export async function listGuildMembers(botToken, guildId, limit = 100) {
  */
 export async function sendDirectMessage(botToken, userId, content) {
   // Step 1: Create/get DM channel
-  const dmRes = await fetch(`${DISCORD_API_BASE}/users/@me/channels`, {
+  const dmRes = await discordFetch(`${DISCORD_API_BASE}/users/@me/channels`, {
     method: "POST",
-    headers: {
-      Authorization: `Bot ${botToken}`,
-      "Content-Type": "application/json",
-    },
+    botToken,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ recipient_id: userId }),
   });
 
@@ -156,12 +177,10 @@ export async function sendDirectMessage(botToken, userId, content) {
   const dmChannel = await dmRes.json();
 
   // Step 2: Send message to DM channel
-  const msgRes = await fetch(`${DISCORD_API_BASE}/channels/${dmChannel.id}/messages`, {
+  const msgRes = await discordFetch(`${DISCORD_API_BASE}/channels/${dmChannel.id}/messages`, {
     method: "POST",
-    headers: {
-      Authorization: `Bot ${botToken}`,
-      "Content-Type": "application/json",
-    },
+    botToken,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   });
 
@@ -181,12 +200,10 @@ export async function sendDirectMessage(botToken, userId, content) {
  * @returns {Promise<object>} Sent message object
  */
 export async function sendChannelMessage(botToken, channelId, content) {
-  const res = await fetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
+  const res = await discordFetch(`${DISCORD_API_BASE}/channels/${channelId}/messages`, {
     method: "POST",
-    headers: {
-      Authorization: `Bot ${botToken}`,
-      "Content-Type": "application/json",
-    },
+    botToken,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   });
 
