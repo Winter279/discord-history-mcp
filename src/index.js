@@ -198,16 +198,8 @@ app.get("/health", (_req, res) => res.json({
   bot_token_set: !!DISCORD_BOT_TOKEN,
 }));
 
-// Auth middleware — validates API_SECRET for MCP endpoints
-const authMiddleware = (req, res, next) => {
-  if (API_SECRET) {
-    const auth = req.headers.authorization;
-    if (auth !== `Bearer ${API_SECRET}`) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-  }
-  next();
-};
+// Auth middleware — no-op (auth handled by deployment platform)
+const authMiddleware = (_req, _res, next) => next();
 
 // SSE transport — stores transports by session for message routing
 const transports = {};
