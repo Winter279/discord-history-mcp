@@ -22,6 +22,7 @@ import {
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const API_SECRET = process.env.API_SECRET || "";
 const PORT = process.env.PORT || 3000;
+const DEFAULT_GUILD_ID = process.env.DEFAULT_GUILD_ID || "";
 
 if (!DISCORD_BOT_TOKEN) {
   console.error("DISCORD_BOT_TOKEN env var is required");
@@ -77,10 +78,12 @@ server.tool(
   "discord_list_channels",
   "List all text channels in a Discord server/guild.",
   {
-    guild_id: z.string().describe("Discord server/guild ID"),
+    guild_id: z.string().optional().describe("Discord server/guild ID (uses DEFAULT_GUILD_ID if omitted)"),
   },
   async ({ guild_id }) => {
-    const channels = await listGuildChannels(DISCORD_BOT_TOKEN, guild_id);
+    const gid = guild_id || DEFAULT_GUILD_ID;
+    if (!gid) return { content: [{ type: "text", text: "Error: guild_id required (no DEFAULT_GUILD_ID set)" }] };
+    const channels = await listGuildChannels(DISCORD_BOT_TOKEN, gid);
     const formatted = channels
       .map((ch) => `#${ch.name} (ID: ${ch.id})${ch.topic ? ` — ${ch.topic}` : ""}`)
       .join("\n");
@@ -101,11 +104,13 @@ server.tool(
   "discord_search",
   "Search messages in a Discord server by keyword.",
   {
-    guild_id: z.string().describe("Discord server/guild ID"),
+    guild_id: z.string().optional().describe("Discord server/guild ID (uses DEFAULT_GUILD_ID if omitted)"),
     query: z.string().describe("Search keyword"),
   },
   async ({ guild_id, query }) => {
-    const messages = await searchMessages(DISCORD_BOT_TOKEN, guild_id, query);
+    const gid = guild_id || DEFAULT_GUILD_ID;
+    if (!gid) return { content: [{ type: "text", text: "Error: guild_id required (no DEFAULT_GUILD_ID set)" }] };
+    const messages = await searchMessages(DISCORD_BOT_TOKEN, gid, query);
     const formatted = messages
       .map(
         (m) =>
@@ -129,11 +134,13 @@ server.tool(
   "discord_list_members",
   "List all members in a Discord server/guild with their roles.",
   {
-    guild_id: z.string().describe("Discord server/guild ID"),
+    guild_id: z.string().optional().describe("Discord server/guild ID (uses DEFAULT_GUILD_ID if omitted)"),
     limit: z.number().min(1).max(1000).default(100).describe("Max members (1-1000)"),
   },
   async ({ guild_id, limit }) => {
-    const members = await listGuildMembers(DISCORD_BOT_TOKEN, guild_id, limit);
+    const gid = guild_id || DEFAULT_GUILD_ID;
+    if (!gid) return { content: [{ type: "text", text: "Error: guild_id required (no DEFAULT_GUILD_ID set)" }] };
+    const members = await listGuildMembers(DISCORD_BOT_TOKEN, gid, limit);
     const formatted = members
       .map(
         (m) =>
