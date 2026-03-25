@@ -190,8 +190,13 @@ server.tool(
 
 const app = express();
 
-// Health check endpoint (no auth required)
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+// Health check endpoint (no auth required) — shows config status
+app.get("/health", (_req, res) => res.json({
+  status: "ok",
+  api_secret_set: !!API_SECRET,
+  default_guild_id_set: !!DEFAULT_GUILD_ID,
+  bot_token_set: !!DISCORD_BOT_TOKEN,
+}));
 
 // Auth middleware — validates API_SECRET for MCP endpoints
 const authMiddleware = (req, res, next) => {
